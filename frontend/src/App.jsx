@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+
+const API_URL = import.meta.env.VITE_API_URL;
 function App() {
 
   const [showConfirm, setShowConfirm] =
@@ -26,7 +28,7 @@ function App() {
     try {
 
       const res = await fetch(
-        "http://127.0.0.1:8000/chat",
+        "https://sql-chatbot-dc1f.onrender.com/chat",
         {
           method: "POST",
 
@@ -41,10 +43,20 @@ function App() {
         }
       );
 
-      const data =
-        await res.json();
+      const data = await res.json();
 
-      setResponse(data);
+      setResponse({
+        sql: data.generated_sql,
+        summary: data.answer,
+        rows: data.database_result || [],
+        columns:
+          data.database_result &&
+          data.database_result.length > 0
+            ? data.database_result[0].map(
+                (_, i) => `Column ${i + 1}`
+              )
+            : []
+      });
 
       if (
         data.summary &&
@@ -79,7 +91,7 @@ function App() {
 
         const res =
           await fetch(
-            "http://127.0.0.1:8000/confirm",
+            "https://sql-chatbot-dc1f.onrender.com/confirm",
             {
 
               method: "POST",
