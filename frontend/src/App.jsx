@@ -46,16 +46,10 @@ function App() {
       const data = await res.json();
 
       setResponse({
-        sql: data.generated_sql,
-        summary: data.answer,
-        rows: data.database_result || [],
-        columns:
-          data.database_result &&
-          data.database_result.length > 0
-            ? data.database_result[0].map(
-                (_, i) => `Column ${i + 1}`
-              )
-            : []
+        sql: data.sql,
+        summary: data.summary,
+        rows: data.rows,
+        columns: data.columns
       });
 
       if (
