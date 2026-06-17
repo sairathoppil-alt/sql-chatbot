@@ -28,7 +28,7 @@ function App() {
     try {
 
       const res = await fetch(
-        "https://sql-chatbot-dc1f.onrender.com/chat",
+        fetch(`${API_URL}/chat`),
         {
           method: "POST",
 
@@ -91,7 +91,7 @@ function App() {
 
         const res =
           await fetch(
-            "https://sql-chatbot-dc1f.onrender.com/confirm",
+            fetch(`${API_URL}/confirm`),
             {
 
               method: "POST",
