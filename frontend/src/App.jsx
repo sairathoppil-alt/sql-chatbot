@@ -28,7 +28,7 @@ function App() {
     try {
 
       const res = await fetch(
-        fetch(`${API_URL}/chat`),
+        `${API_URL}/chat`,
         {
           method: "POST",
 
@@ -91,7 +91,7 @@ function App() {
 
         const res =
           await fetch(
-            fetch(`${API_URL}/confirm`),
+            `${API_URL}/confirm`,
             {
 
               method: "POST",
