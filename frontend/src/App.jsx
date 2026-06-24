@@ -1,23 +1,38 @@
-import { useState } from "react";
 
-
+import {
+  useState,
+  useRef,
+  useEffect
+} from "react";
 const API_URL = import.meta.env.VITE_API_URL;
+console.log(
+  "API URL LOADED =",
+  API_URL
+);
 function App() {
 
-  const [showConfirm, setShowConfirm] =
-    useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingSQL, setPendingSQL] = useState("");
 
-  const [pendingSQL, setPendingSQL] =
-    useState("");
+  const [question, setQuestion] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [question, setQuestion] =
-    useState("");
+  const [response, setResponse] = useState(null);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const [response, setResponse] =
-    useState(null);
+  const [chatQuestion, setChatQuestion] = useState("");
+  const [chatMessages, setChatMessages] = useState([]);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+
+  chatEndRef.current?.scrollIntoView({
+    behavior: "smooth"
+  });
+
+}, [chatMessages]);
+
 
   const askQuestion = async () => {
 
@@ -31,12 +46,9 @@ function App() {
         `${API_URL}/chat`,
         {
           method: "POST",
-
           headers: {
-            "Content-Type":
-              "application/json"
+            "Content-Type": "application/json"
           },
-
           body: JSON.stringify({
             question
           })
@@ -45,27 +57,33 @@ function App() {
 
       const data = await res.json();
 
+      if (data.error) {
+
+        alert(data.error);
+
+        return;
+      }
+
       setResponse({
+
         sql: data.sql,
+
         summary: data.summary,
-        rows: data.rows,
-        columns: data.columns
+
+        rows: data.rows || [],
+
+        columns: data.columns || []
+      
       });
 
       if (
         data.summary &&
-        data.summary.includes(
-          "Confirmation required"
-        )
+        data.summary.includes("Confirmation required")
       ) {
 
-        setPendingSQL(
-          data.sql
-        );
+        setPendingSQL(data.sql);
+        setShowConfirm(true);
 
-        setShowConfirm(
-          true
-        );
       }
 
     } catch (err) {
@@ -75,54 +93,150 @@ function App() {
     } finally {
 
       setLoading(false);
+
     }
   };
 
-  const confirmOperation =
-    async () => {
+  const handleCopy = async () => {
 
-      try {
+    if (!response?.sql) return;
 
-        const res =
-          await fetch(
-            `${API_URL}/confirm`,
-            {
+    await navigator.clipboard.writeText(
+      response.sql
+    );
 
-              method: "POST",
+    setCopied(true);
 
-              headers: {
-                "Content-Type":
-                  "application/json"
-              },
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  };
 
-              body: JSON.stringify({
+  const askAI = async () => {
 
-                sql:
-                  pendingSQL
-              })
-            }
-          );
+  console.log("================================");
+  console.log("ASK AI CLICKED");
+  console.log("API_URL =", API_URL);
+  console.log("Question =", chatQuestion);
+  console.log("Response =", response);
+  console.log("================================");
 
-        const data =
-          await res.json();
+  if (!chatQuestion.trim()) {
 
-        alert(
-          "Operation executed successfully"
-        );
+    console.log("EMPTY QUESTION");
 
-        console.log(data);
+    return;
+  }
 
-        setShowConfirm(false);
+  try {
 
-      } catch (err) {
+    console.log("Sending request...");
 
-        console.error(err);
+    const res = await fetch(
+      `${API_URL}/ask`,
+      {
+        method: "POST",
 
-        alert(
-          "Failed to execute operation"
-        );
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+
+          question: chatQuestion,
+
+          sql: response?.sql || "",
+
+          summary: response?.summary || "",
+
+          results: {
+            columns: response?.columns || [],
+            rows: response?.rows || []
+          }
+
+        })
       }
-    };
+    );
+
+    console.log(
+      "STATUS:",
+      res.status
+    );
+
+    const data =
+      await res.json();
+
+    console.log(
+      "DATA:",
+      data
+    );
+
+    setChatMessages(prev => [
+
+      ...prev,
+
+      {
+        role: "user",
+        content: chatQuestion
+      },
+
+      {
+        role: "assistant",
+        content: data.answer
+      }
+
+    ]);
+
+    setChatQuestion("");
+
+  } catch (err) {
+
+    console.error(
+      "ASK AI ERROR:",
+      err
+    );
+
+  }
+};
+
+  const confirmOperation = async () => {
+
+    try {
+
+      const res = await fetch(
+        `${API_URL}/confirm`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            sql: pendingSQL
+          })
+        }
+      );
+
+      const data = await res.json();
+
+      alert(
+        "Operation executed successfully"
+      );
+
+      console.log(data);
+
+      setShowConfirm(false);
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert(
+        "Failed to execute operation"
+      );
+    }
+  };
 
   return (
 
@@ -140,11 +254,16 @@ function App() {
 
       </div>
 
-      <div className="input-card">
+      <div className="main-layout">
 
-        <textarea
-          placeholder={`
-Show all employees
+        {/* LEFT SIDE */}
+
+        <div className="left-panel">
+
+          <div className="input-card">
+
+            <textarea
+              placeholder={`Show all employees
 
 Add employee Alex in Marketing with salary 70000
 
@@ -152,155 +271,235 @@ Update Alex salary to 85000
 
 Delete employee Alex
 
-Delete employees table
-`}
-          value={question}
-          onChange={(e) =>
-            setQuestion(
-              e.target.value
-            )
-          }
-        />
+Delete employees table`}
+              value={question}
+              onChange={(e) =>
+                setQuestion(
+                  e.target.value
+                )
+              }
+            />
 
-        <button
-          onClick={
-            askQuestion
-          }
-        >
-          Generate
-        </button>
-
-      </div>
-
-      {loading && (
-
-        <div className="loading">
-
-          Thinking...
-
-        </div>
-
-      )}
-
-      {response && (
-
-        <>
-
-          <div className="card">
-
-            <div className="card-header">
-
-              <h2>
-                Generated SQL
-              </h2>
-
-              <button
-                className="copy-btn"
-                onClick={() =>
-                  navigator
-                    .clipboard
-                    .writeText(
-                      response.sql
-                    )
-                }
-              >
-                Copy
-              </button>
-
-            </div>
-
-            <pre>
-              {response.sql}
-            </pre>
+            <button
+              onClick={askQuestion}
+              disabled={loading}
+            >
+              {
+                loading
+                  ? "Thinking..."
+                  : "Generate"
+              }
+            </button>
 
           </div>
 
-          <div className="card">
+          
 
-            <h2>
-              Summary
-            </h2>
+          {response && (
 
-            <div className="summary">
+            <>
 
-              {response.summary}
+              <div className="card">
 
-            </div>
+                <div className="card-header">
 
-          </div>
+                  <h2>
+                    Generated SQL
+                  </h2>
 
-          {response.rows &&
-            response.rows.length > 0 && (
+                  <button
+                    className="copy-btn"
+                    onClick={
+                      handleCopy
+                    }
+                  >
+                    {
+                      copied
+                        ? "Copied ✓"
+                        : "Copy"
+                    }
+                  </button>
+
+                </div>
+
+                <pre>
+                  {response.sql}
+                </pre>
+
+              </div>
 
               <div className="card">
 
                 <h2>
-                  Query Results
+                  Summary
                 </h2>
 
-                <table>
+                <div className="summary">
 
-                  <thead>
+                  {
+                    response.summary
+                  }
 
-                    <tr>
+                </div>
 
-                      {response.columns.map(
-                        (column) => (
+              </div>
 
-                          <th
-                            key={column}
-                          >
-                            {column}
-                          </th>
+              {response.rows &&
+                response.rows.length > 0 && (
 
-                        )
-                      )}
+                  <div className="card">
 
-                    </tr>
+                    <h2>
+                      Query Results
+                    </h2>
 
-                  </thead>
+                    <table>
 
-                  <tbody>
+                      <thead>
 
-                    {response.rows.map(
-                      (
-                        row,
-                        index
-                      ) => (
+                        <tr>
 
-                        <tr
-                          key={index}
-                        >
+                          {response.columns.map(
+                            (column) => (
 
-                          {row.map(
-                            (
-                              cell,
-                              i
-                            ) => (
-
-                              <td key={i}>
-                                {cell}
-                              </td>
+                              <th
+                                key={column}
+                              >
+                                {column}
+                              </th>
 
                             )
                           )}
 
                         </tr>
 
-                      )
-                    )}
+                      </thead>
 
-                  </tbody>
+                      <tbody>
 
-                </table>
+                        {response.rows.map(
+                          (
+                            row,
+                            index
+                          ) => (
 
-              </div>
+                            <tr
+                              key={
+                                index
+                              }
+                            >
 
-            )}
+                              {row.map(
+                                (
+                                  cell,
+                                  i
+                                ) => (
 
-        </>
+                                  <td
+                                    key={i}
+                                  >
+                                    {cell}
+                                  </td>
 
-      )}
+                                )
+                              )}
+
+                            </tr>
+
+                          )
+                        )}
+
+                      </tbody>
+
+                    </table>
+
+                  </div>
+
+                )}
+
+            </>
+
+          )}
+
+        </div>
+
+        {/* RIGHT SIDE CHATBOT */}
+
+        <div className="right-panel">
+
+          <div className="chat-card">
+
+            <h2>
+              AI Analyst
+            </h2>
+
+            <p>
+              Ask questions about the
+              returned data
+            </p>
+
+            <div className="chat-messages">
+
+              {chatMessages.map(
+                (
+                  msg,
+                  index
+                ) => (
+
+                  <div
+                    key={index}
+                    className={`chat-${msg.role}`}
+                  >
+
+                    <strong>
+                      {
+                        msg.role ===
+                        "user"
+                          ? "You"
+                          : "AI"
+                      }
+                      :
+                    </strong>
+
+                    <p>
+                      {
+                        msg.content
+                      }
+                    </p>
+
+                  </div>
+
+                )
+              )}
+              <div ref={chatEndRef}></div>
+
+            </div>
+
+            <input
+              type="text"
+              placeholder="Who earns the most?"
+              value={
+                chatQuestion
+              }
+              onChange={(e) =>
+                setChatQuestion(
+                  e.target.value
+                )
+              }
+            />
+
+            <button
+              onClick={askAI}
+              disabled={!chatQuestion.trim()}
+            >
+              Ask AI
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
 
       {showConfirm && (
 
@@ -313,10 +512,8 @@ Delete employees table
             </h2>
 
             <p>
-
               This action will permanently
               modify your database.
-
             </p>
 
             <pre>

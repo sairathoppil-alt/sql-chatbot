@@ -1,11 +1,10 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import (
-    CORSMiddleware
-)
+from fastapi.middleware.cors import CORSMiddleware
 
 from models import (
     ChatRequest,
-    ConfirmRequest
+    ConfirmRequest,
+    AskRequest
 )
 
 from graph import graph
@@ -17,6 +16,14 @@ from database.schema import (
 
 from database.db import (
     get_connection
+)
+
+from database.executor import (
+    execute_sql
+)
+
+from agents.assistant_agent import (
+    ask_assistant
 )
 
 app = FastAPI()
@@ -33,6 +40,10 @@ app.add_middleware(
 )
 
 
+# -----------------------------
+# Root
+# -----------------------------
+
 @app.get("/")
 def root():
 
@@ -41,6 +52,10 @@ def root():
         "Database Copilot Running"
     }
 
+
+# -----------------------------
+# Schema Viewer
+# -----------------------------
 
 @app.get("/schema")
 def get_schema():
@@ -68,56 +83,141 @@ def get_schema():
             f"PRAGMA table_info({table})"
         )
 
-        columns = cursor.fetchall()
-
-        schema[table] = columns
+        schema[table] = (
+            cursor.fetchall()
+        )
 
     conn.close()
 
     return schema
 
 
+# -----------------------------
+# Main SQL Copilot
+# -----------------------------
+
 @app.post("/chat")
 def chat(
     request: ChatRequest
 ):
 
-    result = graph.invoke({
-        "question":
-        request.question
-    })
+    try:
 
-    return {
+        result = graph.invoke({
+            "question":
+            request.question
+        })
 
-        "intent":
-        result["intent"],
+        return {
 
-        "sql":
-        result["sql_query"],
+            "intent":
+            result.get(
+                "intent"
+            ),
 
-        "columns":
-        result["query_result"]["columns"],
+            "sql":
+            result.get(
+                "sql_query"
+            ),
 
-        "rows":
-        result["query_result"]["rows"],
+            "columns":
+            result.get(
+                "query_result",
+                {}
+            ).get(
+                "columns",
+                []
+            ),
 
-        "summary":
-        result["summary"]
-    }
+            "rows":
+            result.get(
+                "query_result",
+                {}
+            ).get(
+                "rows",
+                []
+            ),
+
+            "summary":
+            result.get(
+                "summary"
+            )
+        }
+
+    except Exception as e:
+
+        return {
+            "error":
+            str(e)
+        }
+
+
+# -----------------------------
+# Confirm Dangerous SQL
+# -----------------------------
+
 @app.post("/confirm")
 def confirm_sql(
     request: ConfirmRequest
 ):
 
-    from database.executor import (
-        execute_sql
-    )
+    try:
 
-    result = execute_sql(
-        request.sql
-    )
+        result = execute_sql(
+            request.sql
+        )
 
-    return {
-        "success": True,
-        "result": result
-    }
+        return {
+
+            "success":
+            True,
+
+            "result":
+            result
+        }
+
+    except Exception as e:
+
+        return {
+
+            "success":
+            False,
+
+            "error":
+            str(e)
+        }
+
+
+# -----------------------------
+# AI Assistant
+# -----------------------------
+
+@app.post("/ask")
+def ask_ai(
+    request: AskRequest
+):
+
+    try:
+
+        answer = ask_assistant(
+
+            request.question,
+
+            request.sql,
+
+            request.summary,
+
+            request.results
+        )
+
+        return {
+            "answer":
+            answer
+        }
+
+    except Exception as e:
+
+        return {
+            "answer":
+            f"Error: {str(e)}"
+        }

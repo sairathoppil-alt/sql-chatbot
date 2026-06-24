@@ -285,3 +285,65 @@ tbody tr:hover {
 .cancel-btn:hover {
   background: #475569;
 }
+
+.main-layout{
+display:flex;
+gap:24px;
+align-items:flex-start;
+}
+
+.left-panel{
+flex:3;
+}
+
+.right-panel{
+flex:1;
+position:sticky;
+top:20px;
+}
+
+.chat-card{
+background:#0b1730;
+padding:20px;
+border-radius:18px;
+border:1px solid #1f3760;
+}
+
+.chat-messages{
+height:400px;
+overflow-y:auto;
+margin:20px 0;
+}
+
+.chat-user{
+background:#12264a;
+padding:12px;
+border-radius:10px;
+margin-bottom:10px;
+}
+
+.chat-assistant{
+background:#0f3d2e;
+padding:12px;
+border-radius:10px;
+margin-bottom:10px;
+}
+
+.chat-card input{
+width:100%;
+padding:12px;
+border-radius:10px;
+margin-bottom:10px;
+background:#08101f;
+color:white;
+border:1px solid #1f3760;
+}
+
+.chat-card button{
+width:100%;
+}
+
+.copy-btn{
+min-width:100px;
+}
+
