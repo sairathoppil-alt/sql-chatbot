@@ -24,6 +24,10 @@ function App() {
   const [chatQuestion, setChatQuestion] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const chatEndRef = useRef(null);
+  const [assistantOpen, setAssistantOpen] =
+  useState(true);
+const [chatOpen, setChatOpen] =
+  useState(false);
 
   useEffect(() => {
 
@@ -422,86 +426,114 @@ Delete employees table`}
           )}
 
         </div>
+      </div>
 
         {/* RIGHT SIDE CHATBOT */}
 
-        <div className="right-panel">
+        <>
+  {!chatOpen && (
 
-          <div className="chat-card">
+    <button
+      className="chat-fab"
+      onClick={() =>
+        setChatOpen(true)
+      }
+    >
+      🤖
+    </button>
 
-            <h2>
-              AI Analyst
-            </h2>
+  )}
 
-            <p>
-              Ask questions about the
-              returned data
-            </p>
+  {chatOpen && (
 
-            <div className="chat-messages">
+    <div className="floating-chat">
 
-              {chatMessages.map(
-                (
-                  msg,
-                  index
-                ) => (
+      <div className="floating-header">
 
-                  <div
-                    key={index}
-                    className={`chat-${msg.role}`}
-                  >
+        <h3>
+          AI Analyst
+        </h3>
 
-                    <strong>
-                      {
-                        msg.role ===
-                        "user"
-                          ? "You"
-                          : "AI"
-                      }
-                      :
-                    </strong>
-
-                    <p>
-                      {
-                        msg.content
-                      }
-                    </p>
-
-                  </div>
-
-                )
-              )}
-              <div ref={chatEndRef}></div>
-
-            </div>
-
-            <input
-              type="text"
-              placeholder="Who earns the most?"
-              value={
-                chatQuestion
-              }
-              onChange={(e) =>
-                setChatQuestion(
-                  e.target.value
-                )
-              }
-            />
-
-            <button
-              onClick={askAI}
-              disabled={!chatQuestion.trim()}
-            >
-              Ask AI
-            </button>
-
-          </div>
-
-        </div>
+        <button
+          className="close-chat"
+          onClick={() =>
+            setChatOpen(false)
+          }
+        >
+          ✕
+        </button>
 
       </div>
 
-      {showConfirm && (
+      <div className="chat-messages">
+
+        {chatMessages.map(
+          (
+            msg,
+            index
+          ) => (
+
+            <div
+              key={index}
+              className={`message ${msg.role}`}
+            >
+
+              <div className="message-content">
+
+                {msg.content}
+
+              </div>
+
+            </div>
+
+          )
+        )}
+
+        <div ref={chatEndRef}></div>
+
+      </div>
+
+      <div className="floating-input">
+
+        <input
+          type="text"
+          placeholder="Ask about the data..."
+          value={chatQuestion}
+          onChange={(e) =>
+            setChatQuestion(
+              e.target.value
+            )
+          }
+          onKeyDown={(e) => {
+
+            if (
+              e.key === "Enter"
+            ) {
+
+              askAI();
+
+            }
+
+          }}
+        />
+
+        <button
+          onClick={askAI}
+          disabled={
+            !chatQuestion.trim()
+          }
+        >
+          Ask
+        </button>
+
+      </div>
+
+    </div>
+
+  )}
+</>
+
+            {showConfirm && (
 
         <div className="modal">
 
@@ -551,6 +583,7 @@ Delete employees table`}
       )}
 
     </div>
+
   );
 }
 
